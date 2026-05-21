@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 """
-Agente ReAct com LangChain — demo hands-on.
+Agente ReAct com LangChain — demo hands-on (motor de persistência).
 
 Demonstra:
   - temperature=0 (determinismo)
   - Ferramentas SerpAPI (busca) + LLM-Math (cálculo)
   - verbose=True (rastro Thought / Action / Observation no console)
+  - Loop autônomo com até 3 tentativas (slide: lógica na prática):
+      * Motor de Persistência — while estado != sucesso e tentativas < 3
+      * Percepção e Ação — realizar_acao(objetivo)
+      * Observação e Feedback — validar_resultado(resultado)
+      * Replanejamento Autônomo — ajustar_estrategia + nova tentativa
 
 Missão padrão: população do Brasil elevada à potência de 0.5.
 """
@@ -14,13 +19,17 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import sys
 from pathlib import Path
+from typing import Any
 
 from dotenv import load_dotenv
 
 _DIR = Path(__file__).resolve().parent
 _ENV = _DIR / ".env"
+
+MAX_TENTATIVAS = 3
 
 DEFAULT_QUESTION = (
     "Qual é a população do Brasil elevada à potência de 0.5?"
@@ -45,6 +54,17 @@ Begin!
 
 Question: {input}
 Thought:{agent_scratchpad}"""
+
+_RESPOSTAS_INVALIDAS = (
+    "don't know",
+    "do not know",
+    "não sei",
+    "nao sei",
+    "unable to",
+    "cannot answer",
+    "não foi possível",
+    "nao foi possivel",
+)
 
 
 def _strip_env(value: str) -> str:
@@ -78,6 +98,85 @@ def _require_env(*names: str) -> None:
         sys.exit(1)
 
 
+def ajustar_estrategia(objetivo: str, tentativa: int) -> str:
+    """Replanejamento autônomo: enriquece o objetivo a cada retentativa."""
+    if tentativa == 0:
+        return objetivo
+    if tentativa == 1:
+        return (
+            "[Estratégia: priorize a ferramenta serpapi para obter dados atuais "
+            "antes de calcular.]\n\n"
+            f"{objetivo}"
+        )
+    return (
+        "[Estratégia: decomponha em passos — (1) serpapi para população atual do "
+        "Brasil, (2) llm-math para elevar à potência de 0.5. Inclua o número final.]\n\n"
+        f"{objetivo}"
+    )
+
+
+def realizar_acao(executor: Any, objetivo: str, tentativa: int) -> dict[str, Any]:
+    """Percepção e ação: invoca o agente ReAct com o objetivo (e estratégia) atual."""
+    numero = tentativa + 1
+    print(f"\n(Motor de Persistência) tentativa {numero}/{MAX_TENTATIVAS}")
+    print("(Percepção e Ação) invocando agente...")
+    return executor.invoke({"input": objetivo})
+
+
+def validar_resultado(resultado: dict[str, Any], objetivo: str) -> bool:
+    """Observação e feedback: heurística sobre a resposta do ambiente (agente)."""
+    saida = (resultado.get("output") or "").strip()
+    if len(saida) < 30:
+        print("(Observação e Feedback) resposta curta ou vazia — inválida.")
+        return False
+
+    saida_lower = saida.lower()
+    for trecho in _RESPOSTAS_INVALIDAS:
+        if trecho in saida_lower:
+            print(f"(Observação e Feedback) resposta genérica detectada — inválida.")
+            return False
+
+    if "população" in objetivo.lower() or "populacao" in objetivo.lower():
+        if "potência" in objetivo.lower() or "potencia" in objetivo.lower():
+            if not re.search(r"\d", saida):
+                print(
+                    "(Observação e Feedback) esperado número na resposta — inválida."
+                )
+                return False
+
+    print("(Observação e Feedback) resultado aceito.")
+    return True
+
+
+def executar_loop_persistencia(
+    executor: Any,
+    objetivo: str,
+) -> tuple[str, dict[str, Any] | None, bool]:
+    """
+    Motor de persistência: até MAX_TENTATIVAS ciclos ação → validação → replanejamento.
+    Retorna (estado_final, ultimo_resultado, sucesso).
+    """
+    estado_atual = "em_andamento"
+    tentativas = 0
+    ultimo_resultado: dict[str, Any] | None = None
+
+    while estado_atual != "sucesso" and tentativas < MAX_TENTATIVAS:
+        entrada = ajustar_estrategia(objetivo, tentativas)
+        ultimo_resultado = realizar_acao(executor, entrada, tentativas)
+
+        if validar_resultado(ultimo_resultado, objetivo):
+            estado_atual = "sucesso"
+            break
+
+        tentativas += 1
+        if tentativas < MAX_TENTATIVAS:
+            print(
+                "\n(Replanejamento Autônomo) ajustando estratégia para próxima tentativa..."
+            )
+
+    return estado_atual, ultimo_resultado, estado_atual == "sucesso"
+
+
 def build_executor(*, verbose: bool = True):
     from langchain.agents import AgentExecutor, create_react_agent
     from langchain_core.prompts import PromptTemplate
@@ -105,7 +204,7 @@ def main() -> int:
         load_dotenv(_ENV)
 
     parser = argparse.ArgumentParser(
-        description="Agente ReAct (LangChain) — demo hands-on",
+        description="Agente ReAct (LangChain) — demo hands-on com motor de persistência",
     )
     parser.add_argument(
         "pergunta",
@@ -125,11 +224,12 @@ def main() -> int:
     print("Modelo:", os.getenv("OPENAI_MODEL", "gpt-4o-mini"), "| temperature=0")
     print("Ferramentas: serpapi, llm-math")
     print("Pergunta:", args.pergunta)
+    print(f"Motor de persistência: até {MAX_TENTATIVAS} tentativas")
     print("-" * 60)
 
     executor = build_executor(verbose=not args.quiet)
     try:
-        result = executor.invoke({"input": args.pergunta})
+        estado, ultimo, ok = executar_loop_persistencia(executor, args.pergunta)
     except Exception as err:
         err_name = type(err).__name__
         if "AuthenticationError" in err_name or "401" in str(err):
@@ -139,9 +239,18 @@ def main() -> int:
         raise
 
     print("-" * 60)
-    print("\n=== Resposta final ===\n")
-    print(result["output"])
-    return 0
+    if ok and ultimo:
+        print("\n=== Resposta final (sucesso) ===\n")
+        print(ultimo["output"])
+        return 0
+
+    print(f"\n=== Falha após {MAX_TENTATIVAS} tentativas (estado: {estado}) ===\n")
+    if ultimo and ultimo.get("output"):
+        print("Última saída parcial:\n")
+        print(ultimo["output"])
+    else:
+        print("Nenhuma saída obtida.")
+    return 1
 
 
 if __name__ == "__main__":
