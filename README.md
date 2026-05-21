@@ -1,6 +1,6 @@
 # Agente ReAct com LangChain
 
-Demo em Python de um agente **ReAct** (Reasoning + Acting) para aula / hands-on: busca a população do Brasil na web (SerpAPI), calcula a raiz quadrada (llm-math) e mostra o rastro de pensamento no terminal.
+Demo em Python de um agente **ReAct** (Reasoning + Acting) para aula / hands-on: você digita a pergunta no terminal, o agente busca na web (SerpAPI), calcula quando precisa (llm-math) e mostra o rastro de pensamento no console.
 
 ## O que demonstra
 
@@ -10,7 +10,7 @@ Demo em Python de um agente **ReAct** (Reasoning + Acting) para aula / hands-on:
 | Busca web | ferramenta **serpapi** |
 | Cálculo | ferramenta **llm-math** |
 | Auditabilidade | `AgentExecutor(..., verbose=True)` |
-| Missão padrão | população do Brasil ^ 0.5 |
+| Entrada | pergunta digitada no prompt interativo |
 
 ## Requisitos
 
@@ -36,10 +36,10 @@ cp .env.example .env
 python react_demo.py
 ```
 
-Outra pergunta:
+O script pede a pergunta no terminal, por exemplo:
 
-```bash
-python react_demo.py "Quantos habitantes tem São Paulo vezes 2?"
+```
+Pergunta: Qual é a população do Brasil elevada à potência de 0.5?
 ```
 
 ## Referências
