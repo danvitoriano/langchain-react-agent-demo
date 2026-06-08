@@ -6,10 +6,11 @@ Demo em Python de um agente **ReAct** (Reasoning + Acting) para aula / hands-on:
 
 | Conceito | Implementação |
 |----------|----------------|
+| Agente ReAct zero-shot | `AgentType.ZERO_SHOT_REACT_DESCRIPTION` |
 | `temperature=0` | `ChatOpenAI(..., temperature=0)` |
 | Busca web | ferramenta **serpapi** |
 | Cálculo | ferramenta **llm-math** |
-| Auditabilidade | `AgentExecutor(..., verbose=True)` |
+| Auditabilidade | `initialize_agent(..., verbose=True)` |
 | Entrada | pergunta digitada no prompt interativo |
 
 ## Requisitos
