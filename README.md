@@ -1,22 +1,23 @@
 # Agente ReAct com LangChain
 
-Demo em Python de um agente **ReAct** (Reasoning + Acting) para aula / hands-on: busca a população do Brasil na web (SerpAPI), calcula a raiz quadrada (llm-math) e mostra o rastro de pensamento no terminal.
+Demo em Python de um agente **ReAct** (Reasoning + Acting) para aula / hands-on: você digita a pergunta no terminal, o agente calcula quando precisa (llm-math) e mostra o rastro de pensamento no console. Há duas variantes: com busca web (SerpAPI) ou só com o conhecimento do modelo.
 
 ## O que demonstra
 
 | Conceito | Implementação |
 |----------|----------------|
+| Agente ReAct zero-shot | `AgentType.ZERO_SHOT_REACT_DESCRIPTION` |
 | `temperature=0` | `ChatOpenAI(..., temperature=0)` |
-| Busca web | ferramenta **serpapi** |
+| Busca web *(opcional)* | ferramenta **serpapi** em `react_demo.py` |
 | Cálculo | ferramenta **llm-math** |
-| Auditabilidade | `AgentExecutor(..., verbose=True)` |
-| Missão padrão | população do Brasil ^ 0.5 |
+| Auditabilidade | `initialize_agent(..., verbose=True)` |
+| Entrada | pergunta digitada no prompt interativo |
 
 ## Requisitos
 
 - Python 3.9+
 - [OpenAI API key](https://platform.openai.com/api-keys)
-- [SerpAPI key](https://serpapi.com/manage-api-key)
+- [SerpAPI key](https://serpapi.com/manage-api-key) — apenas para `react_demo.py`
 
 ## Setup
 
@@ -32,15 +33,25 @@ cp .env.example .env
 
 ## Executar
 
+**Com busca web (SerpAPI + llm-math):**
+
 ```bash
 python react_demo.py
 ```
 
-Outra pergunta:
+**Sem SerpAPI (só llm-math, exige apenas `OPENAI_API_KEY`):**
 
 ```bash
-python react_demo.py "Quantos habitantes tem São Paulo vezes 2?"
+python react_demo_sem_serpapi.py
 ```
+
+O script pede a pergunta no terminal, por exemplo:
+
+```
+Pergunta: Qual é a população do Brasil elevada à potência de 0.5?
+```
+
+> A versão sem SerpAPI responde com o conhecimento do modelo e cálculos via `llm-math`, sem buscar dados atuais na web.
 
 ## Referências
 
