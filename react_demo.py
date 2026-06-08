@@ -23,19 +23,7 @@ modelo = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 llm = ChatOpenAI(model=modelo, temperature=0)
 
 serpapi = SerpAPIWrapper(params={"no_cache": True})
-ferramentas = load_tools(["llm-math"], llm=llm)
-ferramentas.insert(
-    0,
-    Tool(
-        name="Search",
-        description=(
-            "A search engine. Useful for when you need to answer questions "
-            "about current events. Input should be a search query."
-        ),
-        func=serpapi.run,
-        coroutine=serpapi.arun,
-    ),
-)
+ferramentas = load_tools(["serpapi", "llm-math"], llm=llm)
 
 executor = initialize_agent(
     ferramentas,
