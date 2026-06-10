@@ -1,0 +1,18 @@
+# tools_config.yaml
+# Definicao de Atuadores (Tools) para o Agente
+
+tools:
+  - name: "Sistema_Legado_API"
+    description: "Consulta historico de vendas de clientes."
+    parameters:
+      customer_id: "string"
+  - name: "Calculadora_Financeira"
+    description: "Calculos de juros compostos e projecoes."
+    parameters:
+      principal: "float"
+      taxa_mensal: "float"
+      meses: "int"
+  - name: "Validador_Documental"
+    description: "Verifica a conformidade de PDFs com a LGPD."
+    parameters:
+      caminho_pdf: "string"
