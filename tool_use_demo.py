@@ -125,8 +125,8 @@ ferramentas = [
         func=calculadora_financeira,
         description=(
             "Calcula juros compostos e projecoes. "
-            'Entrada: JSON com principal, taxa_mensal e meses, ex: '
-            '{"principal": 1000, "taxa_mensal": 0.01, "meses": 12}.'
+            "Entrada: JSON com principal, taxa_mensal e meses, ex: "
+            '{{"principal": 1000, "taxa_mensal": 0.01, "meses": 12}}.'
         ),
     ),
     Tool(
