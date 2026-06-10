@@ -1,6 +1,6 @@
 # Agente ReAct com LangChain
 
-Demo em Python de um agente **ReAct** (Reasoning + Acting) para aula / hands-on: você digita a pergunta no terminal, o agente calcula quando precisa (llm-math) e mostra o rastro de pensamento no console. Há duas variantes: com busca web (SerpAPI) ou só com o conhecimento do modelo.
+Demo em Python de um agente **ReAct** (Reasoning + Acting) para aula / hands-on: você digita a pergunta no terminal, o agente calcula quando precisa (llm-math), gera imagens com DALL-E quando solicitado e mostra o rastro de pensamento no console. Há duas variantes: com busca web (SerpAPI) ou só com o conhecimento do modelo.
 
 ## O que demonstra
 
@@ -10,6 +10,7 @@ Demo em Python de um agente **ReAct** (Reasoning + Acting) para aula / hands-on:
 | `temperature=0` | `ChatOpenAI(..., temperature=0)` |
 | Busca web *(opcional)* | ferramenta **serpapi** em `react_demo.py` |
 | Cálculo | ferramenta **llm-math** |
+| Geração de imagem | ferramenta **gerar_imagem** (DALL-E 3) |
 | Auditabilidade | `initialize_agent(..., verbose=True)` |
 | Entrada | pergunta digitada no prompt interativo |
 
@@ -49,6 +50,7 @@ O script pede a pergunta no terminal, por exemplo:
 
 ```
 Pergunta: Qual é a população do Brasil elevada à potência de 0.5?
+Pergunta: Gere uma imagem de um robô lendo um livro em uma biblioteca futurista
 ```
 
 > A versão sem SerpAPI responde com o conhecimento do modelo e cálculos via `llm-math`, sem buscar dados atuais na web.

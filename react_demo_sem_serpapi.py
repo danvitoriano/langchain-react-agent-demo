@@ -17,10 +17,13 @@ from langchain.agents import AgentType, initialize_agent
 from langchain_community.agent_toolkits.load_tools import load_tools
 from langchain_openai import ChatOpenAI
 
+from gerar_imagem import criar_ferramenta_gerar_imagem
+
 modelo = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 llm = ChatOpenAI(model=modelo, temperature=0)
 
 ferramentas = load_tools(["llm-math"], llm=llm)
+ferramentas.append(criar_ferramenta_gerar_imagem())
 
 executor = initialize_agent(
     ferramentas,
