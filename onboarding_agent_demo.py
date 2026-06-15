@@ -12,8 +12,14 @@ de contratos. A versao refatorada inclui:
 Rodar:
     pip install -r requirements.txt
     cp .env.example .env   # preencha OPENAI_API_KEY
-    python onboarding_agent_demo.py
-    python onboarding_agent_demo.py "Processe o onboarding do cliente 6002"
+
+    # Um comando por cliente (guardrail deterministico, sem LLM):
+    python onboarding_agent_demo.py 6002
+    python onboarding_agent_demo.py 7001
+
+    # Com agente ReAct + LLM:
+    python onboarding_agent_demo.py 6002 --agent
+    python onboarding_agent_demo.py 7001 --agent
 """
 
 from __future__ import annotations
@@ -46,6 +52,8 @@ logger = logging.getLogger("onboarding_agent")
 # ----------------------------------------------------------------------------
 # Formularios de onboarding (mock) — unica fonte visivel ao agente inicialmente.
 # ----------------------------------------------------------------------------
+
+KNOWN_CLIENT_IDS = frozenset({"6002", "7001"})
 
 _ONBOARDING_FORMS: dict[str, dict[str, Any]] = {
     "6002": {
@@ -395,6 +403,54 @@ def print_session_report() -> None:
         print(f"  client={m.client_id} | {m.decision.value} | {m.reason}")
 
 
+def run_guardrail_test(client_id: str) -> None:
+    """Fluxo deterministico: formulario -> CRM -> guardrail (sem LLM)."""
+    cid = _normalize_client_id(client_id)
+    if cid not in KNOWN_CLIENT_IDS:
+        print(f"Cliente desconhecido: {cid}. Use um de: {', '.join(sorted(KNOWN_CLIENT_IDS))}.")
+        sys.exit(1)
+
+    reset_session()
+    print(f"\n=== Teste guardrail — cliente {cid} ===\n")
+
+    form_out = ler_formulario_onboarding(cid)
+    print("[1] Formulario")
+    print(form_out)
+
+    crm_out = check_active_contracts(cid)
+    print("\n[2] CRM (check_active_contracts)")
+    print(crm_out)
+
+    approve_out = aprovar_contrato(cid)
+    print("\n[3] Decisao (Aprovar_Contrato)")
+    print(json.dumps(json.loads(approve_out), indent=2, ensure_ascii=False))
+
+    print_session_report()
+
+
+def run_agent_for_client(client_id: str) -> None:
+    """Agente ReAct completo para um client_id conhecido."""
+    cid = _normalize_client_id(client_id)
+    if cid not in KNOWN_CLIENT_IDS:
+        print(f"Cliente desconhecido: {cid}. Use um de: {', '.join(sorted(KNOWN_CLIENT_IDS))}.")
+        sys.exit(1)
+
+    reset_session()
+    resultado = run_agent(f"Processe o onboarding do cliente {cid}")
+
+    passos = resultado.get("intermediate_steps", [])
+    if passos:
+        print("\n--- Rastro ReAct (intermediate_steps) ---\n")
+        for i, (acao, observacao) in enumerate(passos, start=1):
+            print(f"[{i}] {acao.tool}")
+            print(f"    Entrada: {acao.tool_input}")
+            print(f"    Saida:   {observacao}")
+
+    print_session_report()
+    print("\n--- Resposta ---\n")
+    print(resultado["output"])
+
+
 def run_agent(pergunta: str) -> dict[str, Any]:
     if not os.getenv("OPENAI_API_KEY"):
         print("Crie o arquivo .env com OPENAI_API_KEY.")
@@ -430,7 +486,21 @@ def run_agent(pergunta: str) -> dict[str, Any]:
 
 
 def main() -> None:
-    pergunta = " ".join(sys.argv[1:]).strip()
+    args = sys.argv[1:]
+
+    if len(args) == 1 and args[0] in KNOWN_CLIENT_IDS:
+        run_guardrail_test(args[0])
+        return
+
+    if len(args) == 2 and args[0] in KNOWN_CLIENT_IDS and args[1] == "--agent":
+        run_agent_for_client(args[0])
+        return
+
+    if len(args) == 2 and args[1] in KNOWN_CLIENT_IDS and args[0] == "--agent":
+        run_agent_for_client(args[1])
+        return
+
+    pergunta = " ".join(args).strip()
     if not pergunta:
         pergunta = input("\nPergunta: ").strip()
     if not pergunta:
